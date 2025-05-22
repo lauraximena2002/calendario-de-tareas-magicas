@@ -10,7 +10,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Calendar as CalendarIcon, Plus } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Task } from '@/types/calendar';
 
@@ -56,6 +56,10 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
     }
 
     setOpen(false);
+  };
+  
+  const handleStatusChange = (newStatus: 'pendiente' | 'en-proceso' | 'hecho') => {
+    setStatus(newStatus);
   };
 
   return (
@@ -123,16 +127,48 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
 
           <div>
             <Label>Estado</Label>
-            <Select value={status} onValueChange={(value: 'pendiente' | 'en-proceso' | 'hecho') => setStatus(value)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pendiente">🔴 Pendiente</SelectItem>
-                <SelectItem value="en-proceso">🔵 En Proceso</SelectItem>
-                <SelectItem value="hecho">🟢 Hecho</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col gap-3">
+              <Select value={status} onValueChange={(value: 'pendiente' | 'en-proceso' | 'hecho') => setStatus(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pendiente">🔴 Pendiente</SelectItem>
+                  <SelectItem value="en-proceso">🔵 En Proceso</SelectItem>
+                  <SelectItem value="hecho">🟢 Hecho</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <div className="grid grid-cols-3 gap-2">
+                <Button 
+                  variant={status === 'pendiente' ? 'default' : 'outline'} 
+                  onClick={() => handleStatusChange('pendiente')}
+                  className={cn(
+                    status === 'pendiente' && "bg-red-500 hover:bg-red-600"
+                  )}
+                >
+                  🔴 Pendiente
+                </Button>
+                <Button 
+                  variant={status === 'en-proceso' ? 'default' : 'outline'} 
+                  onClick={() => handleStatusChange('en-proceso')}
+                  className={cn(
+                    status === 'en-proceso' && "bg-blue-500 hover:bg-blue-600"
+                  )}
+                >
+                  🔵 En Proceso
+                </Button>
+                <Button 
+                  variant={status === 'hecho' ? 'default' : 'outline'} 
+                  onClick={() => handleStatusChange('hecho')}
+                  className={cn(
+                    status === 'hecho' && "bg-green-500 hover:bg-green-600"
+                  )}
+                >
+                  🟢 Hecho
+                </Button>
+              </div>
+            </div>
           </div>
 
           <div>
@@ -168,8 +204,9 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
           </div>
 
           <div className="flex gap-2 pt-4">
-            <Button onClick={handleSave} className="flex-1">
-              {task ? 'Actualizar' : 'Crear'}
+            <Button onClick={handleSave} className="flex-1 bg-green-500 hover:bg-green-600">
+              <Check className="h-4 w-4 mr-1" />
+              Aceptar
             </Button>
             <Button variant="outline" onClick={() => setOpen(false)} className="flex-1">
               Cancelar
