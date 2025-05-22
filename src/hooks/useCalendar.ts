@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { Task, CalendarDay } from '@/types/calendar';
 import { startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isToday, format, addDays, differenceInDays } from 'date-fns';
@@ -33,6 +32,18 @@ export const useCalendar = () => {
         company: 'INVERSIONES EURO S.A.',
         owner: 'laura rincon',
         notifyDaysBefore: 3,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: '3',
+        title: 'Impuesto predial',
+        description: 'Pago anual',
+        date: new Date(2025, 4, 20), // May 20, 2025
+        status: 'en-proceso',
+        company: 'INVERSIONES EURO S.A.',
+        owner: 'Juan Pablo Patiño',
+        notifyDaysBefore: 5,
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -112,7 +123,7 @@ export const useCalendar = () => {
   return {
     currentDate,
     calendarDays,
-    tasks,
+    tasks, // Exposing tasks array for table view
     notifications,
     addTask,
     updateTask,
