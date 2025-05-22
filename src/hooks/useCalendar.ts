@@ -1,54 +1,33 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { Task, CalendarDay } from '@/types/calendar';
-import { startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isToday, format, addDays, differenceInDays } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isToday, format, differenceInDays } from 'date-fns';
+import { getAllTasks, createTask, updateTask as updateTaskService, deleteTask as deleteTaskService } from '@/services/taskService';
 
 export const useCalendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [tasks, setTasks] = useState<Task[]>([]);
   const [notifications, setNotifications] = useState<Task[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Sample data
+  // Cargar tareas desde Supabase
   useEffect(() => {
-    const sampleTasks: Task[] = [
-      {
-        id: '1',
-        title: 'Reteica Bello',
-        description: 'Trámite pendiente',
-        date: new Date(2025, 4, 16), // May 16, 2025
-        status: 'pendiente',
-        company: 'INVERSIONES EURO S.A.',
-        owner: 'laura rincon',
-        notifyDaysBefore: 3,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: '2',
-        title: 'Reteica Envigado',
-        description: 'Trámite pendiente',
-        date: new Date(2025, 4, 17), // May 17, 2025
-        status: 'pendiente',
-        company: 'INVERSIONES EURO S.A.',
-        owner: 'laura rincon',
-        notifyDaysBefore: 3,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: '3',
-        title: 'Impuesto predial',
-        description: 'Pago anual',
-        date: new Date(2025, 4, 20), // May 20, 2025
-        status: 'en-proceso',
-        company: 'INVERSIONES EURO S.A.',
-        owner: 'Juan Pablo Patiño',
-        notifyDaysBefore: 5,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ];
-    setTasks(sampleTasks);
+    const fetchTasks = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const fetchedTasks = await getAllTasks();
+        setTasks(fetchedTasks);
+      } catch (err) {
+        console.error('Error al cargar tareas:', err);
+        setError('Error al cargar las tareas');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTasks();
   }, []);
 
   // Check for upcoming tasks that need notifications
@@ -82,26 +61,27 @@ export const useCalendar = () => {
     });
   }, [currentDate, tasks]);
 
-  const addTask = (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newTask: Task = {
-      ...task,
-      id: Date.now().toString(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    setTasks(prev => [...prev, newTask]);
+  const addTask = async (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const newTask = await createTask(task);
+    if (newTask) {
+      setTasks(prev => [...prev, newTask]);
+    }
   };
 
-  const updateTask = (taskId: string, updates: Partial<Task>) => {
-    setTasks(prev => prev.map(task => 
-      task.id === taskId 
-        ? { ...task, ...updates, updatedAt: new Date() }
-        : task
-    ));
+  const updateTask = async (taskId: string, updates: Partial<Task>) => {
+    const updatedTask = await updateTaskService(taskId, updates);
+    if (updatedTask) {
+      setTasks(prev => prev.map(task => 
+        task.id === taskId ? updatedTask : task
+      ));
+    }
   };
 
-  const deleteTask = (taskId: string) => {
-    setTasks(prev => prev.filter(task => task.id !== taskId));
+  const deleteTask = async (taskId: string) => {
+    const success = await deleteTaskService(taskId);
+    if (success) {
+      setTasks(prev => prev.filter(task => task.id !== taskId));
+    }
   };
 
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -123,8 +103,10 @@ export const useCalendar = () => {
   return {
     currentDate,
     calendarDays,
-    tasks, // Exposing tasks array for table view
+    tasks,
     notifications,
+    isLoading,
+    error,
     addTask,
     updateTask,
     deleteTask,

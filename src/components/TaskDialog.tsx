@@ -10,9 +10,11 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Calendar as CalendarIcon, Plus, Check } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Check, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Task } from '@/types/calendar';
+import { sendTaskNotificationEmail } from '@/services/taskService';
+import { toast } from '@/components/ui/sonner';
 
 interface TaskDialogProps {
   task?: Task;
@@ -30,6 +32,8 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
   const [company, setCompany] = useState(task?.company || '');
   const [owner, setOwner] = useState(task?.owner || '');
   const [notifyDaysBefore, setNotifyDaysBefore] = useState(task?.notifyDaysBefore || 3);
+  const [emailTo, setEmailTo] = useState('');
+  const [showEmailForm, setShowEmailForm] = useState(false);
 
   const handleSave = () => {
     if (!title.trim()) return;
@@ -60,6 +64,24 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
   
   const handleStatusChange = (newStatus: 'pendiente' | 'en-proceso' | 'hecho') => {
     setStatus(newStatus);
+  };
+
+  const handleSendNotification = async () => {
+    if (!emailTo.trim()) {
+      toast.error('Por favor, ingresa un correo electrónico');
+      return;
+    }
+    
+    if (!task) {
+      toast.error('Debes guardar la tarea primero');
+      return;
+    }
+    
+    const success = await sendTaskNotificationEmail(task, emailTo);
+    if (success) {
+      setEmailTo('');
+      setShowEmailForm(false);
+    }
   };
 
   return (
@@ -202,6 +224,40 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
               onChange={(e) => setNotifyDaysBefore(parseInt(e.target.value) || 0)}
             />
           </div>
+
+          {task && (
+            <div>
+              <Button 
+                variant="outline" 
+                className="w-full flex items-center justify-center" 
+                onClick={() => setShowEmailForm(!showEmailForm)}
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                {showEmailForm ? 'Ocultar' : 'Enviar notificación por correo'}
+              </Button>
+              
+              {showEmailForm && (
+                <div className="mt-3 space-y-3">
+                  <div>
+                    <Label htmlFor="emailTo">Correo electrónico</Label>
+                    <Input
+                      id="emailTo"
+                      type="email"
+                      value={emailTo}
+                      onChange={(e) => setEmailTo(e.target.value)}
+                      placeholder="usuario@ejemplo.com"
+                    />
+                  </div>
+                  <Button 
+                    onClick={handleSendNotification} 
+                    className="w-full bg-amber-500 hover:bg-amber-600"
+                  >
+                    Enviar notificación
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex gap-2 pt-4">
             <Button onClick={handleSave} className="flex-1 bg-green-500 hover:bg-green-600">

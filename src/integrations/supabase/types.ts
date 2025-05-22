@@ -9,7 +9,74 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      notifications: {
+        Row: {
+          email_sent_to: string
+          id: string
+          sent_at: string
+          task_id: string
+        }
+        Insert: {
+          email_sent_to: string
+          id?: string
+          sent_at?: string
+          task_id: string
+        }
+        Update: {
+          email_sent_to?: string
+          id?: string
+          sent_at?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          company: string | null
+          created_at: string
+          date: string
+          description: string | null
+          id: string
+          notify_days_before: number | null
+          owner: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          date: string
+          description?: string | null
+          id?: string
+          notify_days_before?: number | null
+          owner?: string | null
+          status: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          date?: string
+          description?: string | null
+          id?: string
+          notify_days_before?: number | null
+          owner?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
