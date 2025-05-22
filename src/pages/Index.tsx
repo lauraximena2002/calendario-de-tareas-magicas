@@ -1,11 +1,30 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import { Calendar } from '@/components/Calendar';
+import { useCalendar } from '@/hooks/useCalendar';
 
 const Index = () => {
+  const {
+    currentDate,
+    calendarDays,
+    notifications,
+    addTask,
+    updateTask,
+    navigateMonth,
+    goToToday,
+  } = useCalendar();
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <div className="max-w-7xl mx-auto">
+        <Calendar
+          currentDate={currentDate}
+          calendarDays={calendarDays}
+          onNavigateMonth={navigateMonth}
+          onGoToToday={goToToday}
+          onAddTask={addTask}
+          onUpdateTask={updateTask}
+          notifications={notifications}
+        />
       </div>
     </div>
   );
