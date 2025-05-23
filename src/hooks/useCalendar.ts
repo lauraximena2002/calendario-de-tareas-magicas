@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Task, CalendarDay } from '@/types/calendar';
 import { startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isToday, format, differenceInDays, isPast } from 'date-fns';
-import { getAllTasks, createTask, updateTask as updateTaskService, deleteTask as deleteTaskService } from '@/services/taskService';
+import { getAllTasks, createTask, updateTask as updateTaskService, deleteTask as deleteTaskService, checkAutomaticNotifications } from '@/services/taskService';
 
 export const useCalendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -31,6 +31,11 @@ export const useCalendar = () => {
     fetchTasks();
   }, []);
 
+  // Verificar notificaciones automáticas al cargar
+  useEffect(() => {
+    checkAutomaticNotifications();
+  }, []);
+
   // Check for upcoming tasks that need notifications and overdue tasks
   useEffect(() => {
     const today = new Date();
@@ -38,13 +43,17 @@ export const useCalendar = () => {
 
     const upcomingTasks = tasks.filter(task => {
       if (task.status === 'hecho') return false;
-      const daysUntilTask = differenceInDays(task.date, today);
+      const taskDate = new Date(task.date);
+      taskDate.setHours(0, 0, 0, 0);
+      const daysUntilTask = differenceInDays(taskDate, today);
       return daysUntilTask <= (task.notifyDaysBefore || 0) && daysUntilTask >= 0;
     });
 
     const overdue = tasks.filter(task => {
       if (task.status === 'hecho') return false;
-      return isPast(task.date) && !isToday(task.date);
+      const taskDate = new Date(task.date);
+      taskDate.setHours(0, 0, 0, 0);
+      return taskDate < today;
     });
 
     setNotifications(upcomingTasks);

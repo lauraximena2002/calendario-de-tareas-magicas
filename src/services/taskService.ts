@@ -140,41 +140,60 @@ export const getAllTasks = async (): Promise<Task[]> => {
 // Enviar correo de notificación manualmente
 export const sendTaskNotificationEmail = async (task: Task, emailTo: string): Promise<boolean> => {
   try {
-    const response = await fetch(`https://pzynnbqppovzqhfqlgfd.supabase.co/functions/v1/send-notification-email`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6eW5uYnFwcG92enFoZnFsZ2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc5NDc5ODgsImV4cCI6MjA2MzUyMzk4OH0.am55XAX3FPGUxLv_4cbEDSheuVSKWxrt_L4OUmSNIZ8`
-      },
-      body: JSON.stringify({
+    const today = new Date();
+    const isOverdue = task.date < today && format(task.date, 'yyyy-MM-dd') !== format(today, 'yyyy-MM-dd');
+    
+    const { data, error } = await supabase.functions.invoke('send-notification-email', {
+      body: {
         to: emailTo,
         taskTitle: task.title,
         dueDate: format(task.date, 'dd/MM/yyyy'),
         taskDescription: task.description,
         company: task.company,
-        subject: `Recordatorio: "${task.title}" - Tarea pendiente`
-      })
+        subject: isOverdue ? `⚠️ TAREA VENCIDA: "${task.title}"` : `📅 RECORDATORIO: "${task.title}" - Tarea pendiente`,
+        isOverdue
+      }
     });
 
-    const result = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(result.error || 'Error desconocido');
+    if (error) {
+      throw error;
     }
 
-    // Registrar la notificación en la base de datos
-    await supabase
-      .from('notifications')
-      .insert({
-        task_id: task.id,
-        email_sent_to: emailTo
-      });
+    if (data.success) {
+      // Registrar la notificación en la base de datos
+      await supabase
+        .from('notifications')
+        .insert({
+          task_id: task.id,
+          email_sent_to: emailTo
+        });
 
-    toast.success('Notificación enviada correctamente');
-    return true;
+      toast.success(isOverdue ? 'Notificación de tarea vencida enviada' : 'Notificación enviada correctamente');
+      return true;
+    } else {
+      throw new Error(data.message || 'Error al enviar notificación');
+    }
   } catch (error) {
     console.error('Error al enviar notificación:', error);
-    toast.error('Error al enviar la notificación');
+    toast.error('Error al enviar la notificación: ' + (error.message || 'Error desconocido'));
     return false;
+  }
+};
+
+// Función para verificar notificaciones automáticas
+export const checkAutomaticNotifications = async (): Promise<void> => {
+  try {
+    const { data, error } = await supabase.functions.invoke('send-notification-email', {
+      body: {},
+      method: 'GET'
+    });
+
+    if (error) {
+      console.error('Error checking notifications:', error);
+    } else {
+      console.log('Notifications check result:', data);
+    }
+  } catch (error) {
+    console.error('Error in automatic notifications check:', error);
   }
 };
