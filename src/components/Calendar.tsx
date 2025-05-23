@@ -1,4 +1,5 @@
 
+import { useState } from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Card } from '@/components/ui/card';
@@ -6,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { TaskCard } from './TaskCard';
 import { TaskDialog } from './TaskDialog';
+import { DayTasksModal } from './DayTasksModal';
 import { CalendarDay, Task } from '@/types/calendar';
 import { cn } from '@/lib/utils';
 import { Calendar as CalendarIcon } from 'lucide-react';
@@ -18,6 +20,7 @@ interface CalendarProps {
   onAddTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
   notifications: Task[];
+  overdueTasks: Task[];
 }
 
 const weekdays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
@@ -29,8 +32,19 @@ export const Calendar = ({
   onGoToToday,
   onAddTask,
   onUpdateTask,
-  notifications
+  notifications,
+  overdueTasks
 }: CalendarProps) => {
+  const [selectedDay, setSelectedDay] = useState<{ date: Date; tasks: Task[] } | null>(null);
+
+  const handleDayClick = (day: CalendarDay) => {
+    if (day.tasks.length > 1) {
+      setSelectedDay({ date: day.date, tasks: day.tasks });
+    }
+  };
+
+  const allNotifications = [...notifications, ...overdueTasks];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -67,13 +81,18 @@ export const Calendar = ({
       </div>
 
       {/* Notifications */}
-      {notifications.length > 0 && (
+      {allNotifications.length > 0 && (
         <Card className="p-4 border-amber-200 bg-amber-50">
           <h3 className="font-semibold text-amber-800 mb-2">📢 Notificaciones</h3>
           <div className="space-y-2">
             {notifications.map(task => (
               <p key={task.id} className="text-sm text-amber-700">
                 <strong>{task.title}</strong> - Vence: {format(task.date, 'dd/MM/yyyy')}
+              </p>
+            ))}
+            {overdueTasks.map(task => (
+              <p key={task.id} className="text-sm text-red-700">
+                <strong>⚠️ {task.title}</strong> - Vencida: {format(task.date, 'dd/MM/yyyy')}
               </p>
             ))}
           </div>
@@ -99,10 +118,20 @@ export const Calendar = ({
               day={day}
               onAddTask={onAddTask}
               onUpdateTask={onUpdateTask}
+              onDayClick={handleDayClick}
             />
           ))}
         </div>
       </Card>
+
+      {/* Day Tasks Modal */}
+      <DayTasksModal
+        open={!!selectedDay}
+        onOpenChange={(open) => !open && setSelectedDay(null)}
+        date={selectedDay?.date || new Date()}
+        tasks={selectedDay?.tasks || []}
+        onUpdateTask={onUpdateTask}
+      />
     </div>
   );
 };
@@ -111,9 +140,10 @@ interface CalendarDayCellProps {
   day: CalendarDay;
   onAddTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
+  onDayClick: (day: CalendarDay) => void;
 }
 
-const CalendarDayCell = ({ day, onAddTask, onUpdateTask }: CalendarDayCellProps) => {
+const CalendarDayCell = ({ day, onAddTask, onUpdateTask, onDayClick }: CalendarDayCellProps) => {
   const dayNumber = format(day.date, 'd');
   
   return (
@@ -144,7 +174,7 @@ const CalendarDayCell = ({ day, onAddTask, onUpdateTask }: CalendarDayCellProps)
       </div>
 
       <div className="space-y-1">
-        {day.tasks.slice(0, 3).map(task => (
+        {day.tasks.slice(0, 2).map(task => (
           <TaskDialog
             key={task.id}
             task={task}
@@ -153,10 +183,15 @@ const CalendarDayCell = ({ day, onAddTask, onUpdateTask }: CalendarDayCellProps)
           />
         ))}
         
-        {day.tasks.length > 3 && (
-          <p className="text-xs text-gray-500 text-center">
-            +{day.tasks.length - 3} más
-          </p>
+        {day.tasks.length > 2 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full text-xs text-gray-500 hover:text-gray-700 h-6"
+            onClick={() => onDayClick(day)}
+          >
+            +{day.tasks.length - 2} más
+          </Button>
         )}
       </div>
     </div>

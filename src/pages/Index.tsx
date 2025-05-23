@@ -2,20 +2,23 @@
 import { useState } from 'react';
 import { Calendar } from '@/components/Calendar';
 import { TaskTable } from '@/components/TaskTable';
+import { StatusChart } from '@/components/StatusChart';
+import { TasksByMonth } from '@/components/TasksByMonth';
 import { useCalendar } from '@/hooks/useCalendar';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon, ListIcon, RefreshCw } from 'lucide-react';
+import { CalendarIcon, ListIcon, RefreshCw, BarChart3, Calendar as CalendarTableIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/sonner';
 
 const Index = () => {
-  const [view, setView] = useState<'calendar' | 'table'>('calendar');
+  const [view, setView] = useState<'calendar' | 'table' | 'chart' | 'monthly'>('calendar');
   
   const {
     currentDate,
     calendarDays,
     tasks,
     notifications,
+    overdueTasks,
     isLoading,
     error,
     addTask,
@@ -67,6 +70,24 @@ const Index = () => {
               <ListIcon className="h-4 w-4" />
               Tabla
             </Button>
+            <Button 
+              variant={view === 'chart' ? 'default' : 'ghost'} 
+              size="sm"
+              onClick={() => setView('chart')}
+              className="flex items-center gap-1"
+            >
+              <BarChart3 className="h-4 w-4" />
+              Gráficos
+            </Button>
+            <Button 
+              variant={view === 'monthly' ? 'default' : 'ghost'} 
+              size="sm"
+              onClick={() => setView('monthly')}
+              className="flex items-center gap-1"
+            >
+              <CalendarTableIcon className="h-4 w-4" />
+              Por Mes
+            </Button>
           </div>
         </div>
         
@@ -88,6 +109,17 @@ const Index = () => {
             onAddTask={addTask}
             onUpdateTask={updateTask}
             notifications={notifications}
+            overdueTasks={overdueTasks}
+          />
+        ) : view === 'chart' ? (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <StatusChart tasks={tasks} />
+          </div>
+        ) : view === 'monthly' ? (
+          <TasksByMonth 
+            tasks={tasks}
+            onUpdateTask={updateTask}
+            onDeleteTask={deleteTask}
           />
         ) : (
           <div className="bg-white rounded-lg shadow-lg p-6">

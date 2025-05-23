@@ -34,6 +34,7 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
   const [notifyDaysBefore, setNotifyDaysBefore] = useState(task?.notifyDaysBefore || 3);
   const [emailTo, setEmailTo] = useState('');
   const [showEmailForm, setShowEmailForm] = useState(false);
+  const [notificationTime, setNotificationTime] = useState('09:00');
 
   const handleSave = () => {
     if (!title.trim()) return;
@@ -94,7 +95,7 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{task ? 'Editar Tarea' : 'Nueva Tarea'}</DialogTitle>
         </DialogHeader>
@@ -222,6 +223,16 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
               max="30"
               value={notifyDaysBefore}
               onChange={(e) => setNotifyDaysBefore(parseInt(e.target.value) || 0)}
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="notificationTime">Hora de notificación</Label>
+            <Input
+              id="notificationTime"
+              type="time"
+              value={notificationTime}
+              onChange={(e) => setNotificationTime(e.target.value)}
             />
           </div>
 

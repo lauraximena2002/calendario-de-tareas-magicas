@@ -3,6 +3,7 @@ import { Task } from '@/types/calendar';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { getCompanyColor } from '@/utils/companyColors';
 
 interface TaskCardProps {
   task: Task;
@@ -30,6 +31,7 @@ const statusConfig = {
 
 export const TaskCard = ({ task, onClick, size = 'sm' }: TaskCardProps) => {
   const config = statusConfig[task.status];
+  const companyColor = getCompanyColor(task.company || '');
   
   return (
     <Card 
@@ -60,14 +62,15 @@ export const TaskCard = ({ task, onClick, size = 'sm' }: TaskCardProps) => {
         </div>
         
         {task.company && (
-          <p className={cn(
-            "text-muted-foreground font-medium",
+          <Badge variant="secondary" className={cn(
+            "text-xs",
             size === 'sm' && "text-xs",
             size === 'md' && "text-xs",
-            size === 'lg' && "text-sm"
+            size === 'lg' && "text-sm",
+            companyColor
           )}>
             {task.company}
-          </p>
+          </Badge>
         )}
         
         {task.owner && (

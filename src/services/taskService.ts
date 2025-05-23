@@ -23,7 +23,7 @@ const convertTaskFromSupabaseFormat = (dbTask: any): Task => {
     id: dbTask.id,
     title: dbTask.title,
     description: dbTask.description || undefined,
-    date: new Date(dbTask.date),
+    date: new Date(dbTask.date + 'T00:00:00'),
     status: dbTask.status as 'pendiente' | 'en-proceso' | 'hecho',
     company: dbTask.company || undefined,
     owner: dbTask.owner || undefined,
@@ -140,11 +140,11 @@ export const getAllTasks = async (): Promise<Task[]> => {
 // Enviar correo de notificación manualmente
 export const sendTaskNotificationEmail = async (task: Task, emailTo: string): Promise<boolean> => {
   try {
-    const response = await fetch(`${supabase.supabaseUrl}/functions/v1/send-notification-email`, {
+    const response = await fetch(`https://pzynnbqppovzqhfqlgfd.supabase.co/functions/v1/send-notification-email`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabase.supabaseKey}`
+        'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB6eW5uYnFwcG92enFoZnFsZ2ZkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc5NDc5ODgsImV4cCI6MjA2MzUyMzk4OH0.am55XAX3FPGUxLv_4cbEDSheuVSKWxrt_L4OUmSNIZ8`
       },
       body: JSON.stringify({
         to: emailTo,

@@ -1,13 +1,14 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Task, CalendarDay } from '@/types/calendar';
-import { startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isToday, format, differenceInDays } from 'date-fns';
+import { startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isToday, format, differenceInDays, isPast } from 'date-fns';
 import { getAllTasks, createTask, updateTask as updateTaskService, deleteTask as deleteTaskService } from '@/services/taskService';
 
 export const useCalendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [tasks, setTasks] = useState<Task[]>([]);
   const [notifications, setNotifications] = useState<Task[]>([]);
+  const [overdueTasks, setOverdueTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,15 +31,24 @@ export const useCalendar = () => {
     fetchTasks();
   }, []);
 
-  // Check for upcoming tasks that need notifications
+  // Check for upcoming tasks that need notifications and overdue tasks
   useEffect(() => {
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     const upcomingTasks = tasks.filter(task => {
       if (task.status === 'hecho') return false;
       const daysUntilTask = differenceInDays(task.date, today);
       return daysUntilTask <= (task.notifyDaysBefore || 0) && daysUntilTask >= 0;
     });
+
+    const overdue = tasks.filter(task => {
+      if (task.status === 'hecho') return false;
+      return isPast(task.date) && !isToday(task.date);
+    });
+
     setNotifications(upcomingTasks);
+    setOverdueTasks(overdue);
   }, [tasks]);
 
   const calendarDays = useMemo(() => {
@@ -105,6 +115,7 @@ export const useCalendar = () => {
     calendarDays,
     tasks,
     notifications,
+    overdueTasks,
     isLoading,
     error,
     addTask,

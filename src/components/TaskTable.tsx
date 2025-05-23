@@ -16,6 +16,7 @@ import { TaskDialog } from "./TaskDialog";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
+import { getCompanyColor } from "@/utils/companyColors";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -97,6 +98,7 @@ interface TaskRowProps {
 const TaskRow = ({ task, onUpdateTask, onDeleteTask }: TaskRowProps) => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const config = statusConfig[task.status];
+  const companyColor = getCompanyColor(task.company || '');
   
   const handleDelete = () => {
     onDeleteTask(task.id);
@@ -144,9 +146,9 @@ const TaskRow = ({ task, onUpdateTask, onDeleteTask }: TaskRowProps) => {
         </TableCell>
         <TableCell>
           {task.company && (
-            <div className="bg-amber-100 text-amber-800 border border-amber-200 px-2 py-0.5 rounded inline-block text-sm">
+            <Badge variant="secondary" className={cn("text-xs", companyColor)}>
               {task.company}
-            </div>
+            </Badge>
           )}
         </TableCell>
         <TableCell>
