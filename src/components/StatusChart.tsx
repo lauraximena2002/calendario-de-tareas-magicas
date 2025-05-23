@@ -36,6 +36,7 @@ export const StatusChart = ({ tasks }: StatusChartProps) => {
       status: config.label,
       count,
       color: config.color,
+      bgColor: config.bgColor,
       icon: config.icon,
       tasks: tasks.filter(task => task.status === status)
     };
@@ -100,7 +101,7 @@ export const StatusChart = ({ tasks }: StatusChartProps) => {
       {/* Tarjetas de resumen por estado */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {statusData.map((item) => (
-          <Card key={item.status} className="p-4" style={{ backgroundColor: statusConfig[item.status as keyof typeof statusConfig].bgColor }}>
+          <Card key={item.status} className="p-4" style={{ backgroundColor: item.bgColor }}>
             <div className="text-center">
               <div className="text-3xl mb-2">{item.icon}</div>
               <h4 className="text-lg font-semibold text-gray-700">{item.status}</h4>
