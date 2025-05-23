@@ -133,7 +133,7 @@ serve(async (req) => {
     }
     
     // Endpoint para verificar y enviar notificaciones automáticas
-    if (req.method === "GET" && new URL(req.url).searchParams.get("check") === "notifications") {
+    if (req.method === "GET") {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
@@ -148,7 +148,7 @@ serve(async (req) => {
       }
       
       const results = [];
-      const defaultEmail = "usuario@ejemplo.com"; // Cambiar por el email real del usuario
+      const defaultEmail = "tatianarincon104@gmail.com"; // Cambiar por el email real del usuario
       
       for (const task of tasks || []) {
         const dueDate = new Date(task.date);
@@ -156,10 +156,10 @@ serve(async (req) => {
         const daysUntilDue = Math.floor((dueDate.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
         const notifyDaysBefore = task.notify_days_before || 3;
         
-        // Verificar si necesita notificación
+        // Verificar si necesita notificación: exactamente los días de anticipación configurados o si está vencida
         const needsNotification = (
-          // Tarea próxima a vencer (dentro del rango de días de notificación)
-          (daysUntilDue <= notifyDaysBefore && daysUntilDue >= 0) ||
+          // Tarea con exactamente los días de anticipación configurados
+          daysUntilDue === notifyDaysBefore ||
           // Tarea vencida (días negativos)
           daysUntilDue < 0
         );

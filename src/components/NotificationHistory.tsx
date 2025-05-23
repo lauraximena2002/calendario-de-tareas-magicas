@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Mail, Clock } from 'lucide-react';
+import { Mail, Clock, AlertCircle } from 'lucide-react';
 
 interface NotificationHistoryProps {
   taskId: string;
@@ -60,9 +60,22 @@ export const NotificationHistory = ({ taskId }: NotificationHistoryProps) => {
       <div className="text-center py-4">
         <Mail className="h-8 w-8 mx-auto mb-2 text-gray-400" />
         <p className="text-sm text-gray-500">No se han enviado notificaciones</p>
+        <p className="text-xs text-gray-400 mt-1">
+          Las notificaciones se enviarán según los días configurados
+        </p>
       </div>
     );
   }
+
+  // Agrupar notificaciones por correo electrónico
+  const notificationsByEmail = notifications.reduce((acc, notification) => {
+    const email = notification.email_sent_to;
+    if (!acc[email]) {
+      acc[email] = [];
+    }
+    acc[email].push(notification);
+    return acc;
+  }, {} as Record<string, Notification[]>);
 
   return (
     <div className="space-y-3">
@@ -74,23 +87,44 @@ export const NotificationHistory = ({ taskId }: NotificationHistoryProps) => {
         </Badge>
       </div>
       
-      <div className="max-h-32 overflow-y-auto space-y-2">
-        {notifications.map((notification) => (
-          <Card key={notification.id} className="p-3 bg-gray-50">
-            <div className="flex items-center justify-between">
+      <div className="max-h-40 overflow-y-auto space-y-2">
+        {Object.entries(notificationsByEmail).map(([email, emailNotifications]) => (
+          <Card key={email} className="p-3 bg-gray-50">
+            <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Mail className="h-3 w-3 text-blue-500" />
-                <span className="text-sm font-medium text-gray-700">
-                  {notification.email_sent_to}
-                </span>
+                <Mail className="h-4 w-4 text-blue-500" />
+                <span className="text-sm font-medium text-gray-700">{email}</span>
+                <Badge variant="outline" className="text-xs">
+                  {emailNotifications.length} {emailNotifications.length === 1 ? 'notificación' : 'notificaciones'}
+                </Badge>
               </div>
-              <div className="flex items-center gap-1 text-xs text-gray-500">
-                <Clock className="h-3 w-3" />
-                {format(new Date(notification.sent_at), "dd/MM/yyyy 'a las' HH:mm", { locale: es })}
+              
+              <div className="pl-6 space-y-1">
+                {emailNotifications.slice(0, 3).map((notification) => (
+                  <div key={notification.id} className="flex items-center justify-between text-xs text-gray-500">
+                    <div className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      <span>
+                        {format(new Date(notification.sent_at), "dd/MM/yyyy 'a las' HH:mm", { locale: es })}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                
+                {emailNotifications.length > 3 && (
+                  <div className="text-xs text-gray-500 italic">
+                    + {emailNotifications.length - 3} notificaciones más...
+                  </div>
+                )}
               </div>
             </div>
           </Card>
         ))}
+        
+        <div className="text-xs text-amber-600 flex items-center gap-1 mt-1">
+          <AlertCircle className="h-3 w-3" />
+          <span>Las notificaciones se envían según los días configurados antes del vencimiento</span>
+        </div>
       </div>
     </div>
   );
