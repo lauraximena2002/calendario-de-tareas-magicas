@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { Task } from '@/types/calendar';
 import { sendTaskNotificationEmail } from '@/services/taskService';
 import { toast } from '@/components/ui/sonner';
+import { NotificationHistory } from './NotificationHistory';
 
 interface TaskDialogProps {
   task?: Task;
@@ -50,7 +51,6 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
     });
 
     if (!task) {
-      // Reset form for new tasks
       setTitle('');
       setDescription('');
       setDate(defaultDate || new Date());
@@ -237,37 +237,41 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
           </div>
 
           {task && (
-            <div>
-              <Button 
-                variant="outline" 
-                className="w-full flex items-center justify-center" 
-                onClick={() => setShowEmailForm(!showEmailForm)}
-              >
-                <Mail className="h-4 w-4 mr-2" />
-                {showEmailForm ? 'Ocultar' : 'Enviar notificación por correo'}
-              </Button>
+            <>
+              <NotificationHistory taskId={task.id} />
               
-              {showEmailForm && (
-                <div className="mt-3 space-y-3">
-                  <div>
-                    <Label htmlFor="emailTo">Correo electrónico</Label>
-                    <Input
-                      id="emailTo"
-                      type="email"
-                      value={emailTo}
-                      onChange={(e) => setEmailTo(e.target.value)}
-                      placeholder="usuario@ejemplo.com"
-                    />
+              <div>
+                <Button 
+                  variant="outline" 
+                  className="w-full flex items-center justify-center" 
+                  onClick={() => setShowEmailForm(!showEmailForm)}
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  {showEmailForm ? 'Ocultar' : 'Enviar notificación por correo'}
+                </Button>
+                
+                {showEmailForm && (
+                  <div className="mt-3 space-y-3">
+                    <div>
+                      <Label htmlFor="emailTo">Correo electrónico</Label>
+                      <Input
+                        id="emailTo"
+                        type="email"
+                        value={emailTo}
+                        onChange={(e) => setEmailTo(e.target.value)}
+                        placeholder="usuario@ejemplo.com"
+                      />
+                    </div>
+                    <Button 
+                      onClick={handleSendNotification} 
+                      className="w-full bg-amber-500 hover:bg-amber-600"
+                    >
+                      Enviar notificación
+                    </Button>
                   </div>
-                  <Button 
-                    onClick={handleSendNotification} 
-                    className="w-full bg-amber-500 hover:bg-amber-600"
-                  >
-                    Enviar notificación
-                  </Button>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            </>
           )}
 
           <div className="flex gap-2 pt-4">
