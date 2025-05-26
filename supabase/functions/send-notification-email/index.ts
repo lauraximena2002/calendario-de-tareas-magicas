@@ -25,7 +25,6 @@ const sendEmail = async (payload: EmailPayload) => {
   try {
     const isOverdue = payload.isOverdue;
     const statusText = isOverdue ? "⚠️ VENCIDA" : "📅 Próxima a vencer";
-    const urgencyClass = isOverdue ? "urgent" : "reminder";
     
     const htmlContent = `
       <!DOCTYPE html>
@@ -137,7 +136,7 @@ serve(async (req) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      // Obtener tareas que necesitan notificación (incluidas las vencidas)
+      // Obtener tareas que necesitan notificación
       const { data: tasks, error } = await supabase
         .from("tasks")
         .select("*")
@@ -148,7 +147,6 @@ serve(async (req) => {
       }
       
       const results = [];
-      const defaultEmail = "tatianarincon104@gmail.com"; // Cambiar por el email real del usuario
       
       for (const task of tasks || []) {
         const dueDate = new Date(task.date);
@@ -156,31 +154,35 @@ serve(async (req) => {
         const daysUntilDue = Math.floor((dueDate.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
         const notifyDaysBefore = task.notify_days_before || 3;
         
-        // Verificar si necesita notificación: exactamente los días de anticipación configurados o si está vencida
-        const needsNotification = (
-          // Tarea con exactamente los días de anticipación configurados
-          daysUntilDue === notifyDaysBefore ||
-          // Tarea vencida (días negativos)
-          daysUntilDue < 0
-        );
+        // Solo enviar notificación si:
+        // 1. Faltan exactamente los días configurados (ej: 3 días antes)
+        // 2. O si está vencida (días negativos) - para recordatorios diarios de tareas vencidas
+        const shouldNotify = (daysUntilDue === notifyDaysBefore) || (daysUntilDue < 0);
         
-        if (needsNotification) {
+        if (shouldNotify) {
           const isOverdue = daysUntilDue < 0;
           
-          // Verificar si ya enviamos una notificación hoy para esta tarea
+          // Verificar si ya enviamos notificación hoy para esta tarea
+          const startOfDay = new Date(today);
+          const endOfDay = new Date(today);
+          endOfDay.setHours(23, 59, 59, 999);
+          
           const { data: todayNotification } = await supabase
             .from("notifications")
             .select("*")
             .eq("task_id", task.id)
-            .gte("sent_at", today.toISOString())
-            .lt("sent_at", new Date(today.getTime() + 24 * 60 * 60 * 1000).toISOString())
+            .gte("sent_at", startOfDay.toISOString())
+            .lte("sent_at", endOfDay.toISOString())
             .maybeSingle();
           
-          // Si no hay notificación de hoy, enviar correo
+          // Solo enviar si no hay notificación de hoy
           if (!todayNotification) {
+            // Por ahora usar email por defecto, pero esto se cambiará cuando se envíe manualmente
+            const defaultEmail = "tatianarincon104@gmail.com";
+            
             const emailResult = await sendEmail({
               to: defaultEmail,
-              subject: isOverdue ? `⚠️ TAREA VENCIDA: "${task.title}"` : `📅 RECORDATORIO: "${task.title}" vence pronto`,
+              subject: isOverdue ? `⚠️ TAREA VENCIDA: "${task.title}"` : `📅 RECORDATORIO: "${task.title}" vence en ${notifyDaysBefore} días`,
               taskTitle: task.title,
               dueDate: new Date(task.date).toLocaleDateString('es-ES'),
               taskDescription: task.description,

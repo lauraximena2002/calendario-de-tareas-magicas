@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Task } from "@/types/calendar";
 import { toast } from "@/components/ui/sonner";
@@ -145,7 +144,7 @@ export const sendTaskNotificationEmail = async (task: Task, emailTo: string): Pr
     
     const { data, error } = await supabase.functions.invoke('send-notification-email', {
       body: {
-        to: emailTo,
+        to: emailTo, // Usar el email especificado por el usuario
         taskTitle: task.title,
         dueDate: format(task.date, 'dd/MM/yyyy'),
         taskDescription: task.description,
@@ -165,7 +164,7 @@ export const sendTaskNotificationEmail = async (task: Task, emailTo: string): Pr
         .from('notifications')
         .insert({
           task_id: task.id,
-          email_sent_to: emailTo
+          email_sent_to: emailTo // Registrar el email correcto
         });
 
       toast.success(isOverdue ? 'Notificación de tarea vencida enviada' : 'Notificación enviada correctamente');
