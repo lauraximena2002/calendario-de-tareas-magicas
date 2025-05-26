@@ -19,7 +19,7 @@ interface EmailPayload {
   isOverdue?: boolean;
 }
 
-const resend = new Resend("re_MvKScxmx_Pqy3QD2Bqazq3NrQRqxjFEqW");
+const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const sendEmail = async (payload: EmailPayload) => {
   try {
@@ -112,8 +112,6 @@ serve(async (req) => {
     if (req.method === "POST") {
       const { to, taskTitle, dueDate, taskDescription, company, subject, isOverdue } = await req.json();
       
-      console.log("Enviando email a:", to);
-      
       const result = await sendEmail({
         to,
         subject: subject || (isOverdue ? "⚠️ Tarea Vencida" : "📅 Recordatorio de tarea"),
@@ -138,12 +136,11 @@ serve(async (req) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      // Obtener tareas que necesitan notificación y tienen email configurado
+      // Obtener tareas que necesitan notificación
       const { data: tasks, error } = await supabase
         .from("tasks")
         .select("*")
-        .neq("status", "hecho")
-        .not("notification_email", "is", null);
+        .neq("status", "hecho");
       
       if (error) {
         throw error;
@@ -162,7 +159,7 @@ serve(async (req) => {
         // 2. O si está vencida (días negativos) - para recordatorios diarios de tareas vencidas
         const shouldNotify = (daysUntilDue === notifyDaysBefore) || (daysUntilDue < 0);
         
-        if (shouldNotify && task.notification_email) {
+        if (shouldNotify) {
           const isOverdue = daysUntilDue < 0;
           
           // Verificar si ya enviamos notificación hoy para esta tarea
@@ -180,10 +177,11 @@ serve(async (req) => {
           
           // Solo enviar si no hay notificación de hoy
           if (!todayNotification) {
-            console.log(`Enviando notificación para tarea: ${task.title} a: ${task.notification_email}`);
+            // Por ahora usar email por defecto, pero esto se cambiará cuando se envíe manualmente
+            const defaultEmail = "tatianarincon104@gmail.com";
             
             const emailResult = await sendEmail({
-              to: task.notification_email,
+              to: defaultEmail,
               subject: isOverdue ? `⚠️ TAREA VENCIDA: "${task.title}"` : `📅 RECORDATORIO: "${task.title}" vence en ${notifyDaysBefore} días`,
               taskTitle: task.title,
               dueDate: new Date(task.date).toLocaleDateString('es-ES'),
@@ -198,13 +196,12 @@ serve(async (req) => {
                 .from("notifications")
                 .insert({
                   task_id: task.id,
-                  email_sent_to: task.notification_email
+                  email_sent_to: defaultEmail
                 });
               
               results.push({
                 taskId: task.id,
                 taskTitle: task.title,
-                emailSentTo: task.notification_email,
                 status: isOverdue ? "notificación de vencida enviada" : "notificación de recordatorio enviada",
                 daysUntilDue,
                 isOverdue
@@ -214,7 +211,6 @@ serve(async (req) => {
             results.push({
               taskId: task.id,
               taskTitle: task.title,
-              emailSentTo: task.notification_email,
               status: "notificación ya enviada hoy",
               daysUntilDue,
               isOverdue: daysUntilDue < 0

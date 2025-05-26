@@ -8,7 +8,6 @@ export interface Task {
   company?: string;
   owner?: string;
   notifyDaysBefore?: number;
-  notificationEmail?: string;
   createdAt: Date;
   updatedAt: Date;
 }
