@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Task } from "@/types/calendar";
 import { toast } from "@/components/ui/sonner";
@@ -12,7 +13,8 @@ const convertTaskToSupabaseFormat = (task: Omit<Task, 'id' | 'createdAt' | 'upda
     status: task.status,
     company: task.company || null,
     owner: task.owner || null,
-    notify_days_before: task.notifyDaysBefore || 3
+    notify_days_before: task.notifyDaysBefore || 3,
+    notification_email: task.notificationEmail || null
   };
 };
 
@@ -27,6 +29,7 @@ const convertTaskFromSupabaseFormat = (dbTask: any): Task => {
     company: dbTask.company || undefined,
     owner: dbTask.owner || undefined,
     notifyDaysBefore: dbTask.notify_days_before || 3,
+    notificationEmail: dbTask.notification_email || undefined,
     createdAt: new Date(dbTask.created_at),
     updatedAt: new Date(dbTask.updated_at)
   };
@@ -68,6 +71,7 @@ export const updateTask = async (taskId: string, updates: Partial<Task>): Promis
     if (updates.company !== undefined) updateData.company = updates.company || null;
     if (updates.owner !== undefined) updateData.owner = updates.owner || null;
     if (updates.notifyDaysBefore !== undefined) updateData.notify_days_before = updates.notifyDaysBefore;
+    if (updates.notificationEmail !== undefined) updateData.notification_email = updates.notificationEmail || null;
 
     const { data, error } = await supabase
       .from('tasks')
@@ -144,7 +148,7 @@ export const sendTaskNotificationEmail = async (task: Task, emailTo: string): Pr
     
     const { data, error } = await supabase.functions.invoke('send-notification-email', {
       body: {
-        to: emailTo, // Usar el email especificado por el usuario
+        to: emailTo,
         taskTitle: task.title,
         dueDate: format(task.date, 'dd/MM/yyyy'),
         taskDescription: task.description,
@@ -159,12 +163,11 @@ export const sendTaskNotificationEmail = async (task: Task, emailTo: string): Pr
     }
 
     if (data.success) {
-      // Registrar la notificación en la base de datos
       await supabase
         .from('notifications')
         .insert({
           task_id: task.id,
-          email_sent_to: emailTo // Registrar el email correcto
+          email_sent_to: emailTo
         });
 
       toast.success(isOverdue ? 'Notificación de tarea vencida enviada' : 'Notificación enviada correctamente');

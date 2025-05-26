@@ -136,11 +136,12 @@ serve(async (req) => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      // Obtener tareas que necesitan notificación
+      // Obtener tareas que necesitan notificación y tienen email configurado
       const { data: tasks, error } = await supabase
         .from("tasks")
         .select("*")
-        .neq("status", "hecho");
+        .neq("status", "hecho")
+        .not("notification_email", "is", null);
       
       if (error) {
         throw error;
@@ -159,7 +160,7 @@ serve(async (req) => {
         // 2. O si está vencida (días negativos) - para recordatorios diarios de tareas vencidas
         const shouldNotify = (daysUntilDue === notifyDaysBefore) || (daysUntilDue < 0);
         
-        if (shouldNotify) {
+        if (shouldNotify && task.notification_email) {
           const isOverdue = daysUntilDue < 0;
           
           // Verificar si ya enviamos notificación hoy para esta tarea
@@ -177,11 +178,8 @@ serve(async (req) => {
           
           // Solo enviar si no hay notificación de hoy
           if (!todayNotification) {
-            // Por ahora usar email por defecto, pero esto se cambiará cuando se envíe manualmente
-            const defaultEmail = "tatianarincon104@gmail.com";
-            
             const emailResult = await sendEmail({
-              to: defaultEmail,
+              to: task.notification_email,
               subject: isOverdue ? `⚠️ TAREA VENCIDA: "${task.title}"` : `📅 RECORDATORIO: "${task.title}" vence en ${notifyDaysBefore} días`,
               taskTitle: task.title,
               dueDate: new Date(task.date).toLocaleDateString('es-ES'),
@@ -196,12 +194,13 @@ serve(async (req) => {
                 .from("notifications")
                 .insert({
                   task_id: task.id,
-                  email_sent_to: defaultEmail
+                  email_sent_to: task.notification_email
                 });
               
               results.push({
                 taskId: task.id,
                 taskTitle: task.title,
+                emailSentTo: task.notification_email,
                 status: isOverdue ? "notificación de vencida enviada" : "notificación de recordatorio enviada",
                 daysUntilDue,
                 isOverdue
@@ -211,6 +210,7 @@ serve(async (req) => {
             results.push({
               taskId: task.id,
               taskTitle: task.title,
+              emailSentTo: task.notification_email,
               status: "notificación ya enviada hoy",
               daysUntilDue,
               isOverdue: daysUntilDue < 0
