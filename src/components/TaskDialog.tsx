@@ -10,7 +10,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Calendar as CalendarIcon, Plus, Check, Mail } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Check, Mail, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Task } from '@/types/calendar';
 import { sendTaskNotificationEmail } from '@/services/taskService';
@@ -33,9 +33,10 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
   const [company, setCompany] = useState(task?.company || '');
   const [owner, setOwner] = useState(task?.owner || '');
   const [notifyDaysBefore, setNotifyDaysBefore] = useState(task?.notifyDaysBefore || 3);
-  const [emailTo, setEmailTo] = useState('');
-  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [notificationEmail, setNotificationEmail] = useState(task?.notificationEmail || '');
   const [notificationTime, setNotificationTime] = useState('09:00');
+  const [showManualNotification, setShowManualNotification] = useState(false);
+  const [manualEmail, setManualEmail] = useState('');
 
   const handleSave = () => {
     if (!title.trim()) return;
@@ -48,6 +49,7 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
       company,
       owner,
       notifyDaysBefore,
+      notificationEmail,
     });
 
     if (!task) {
@@ -58,6 +60,7 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
       setCompany('');
       setOwner('');
       setNotifyDaysBefore(3);
+      setNotificationEmail('');
     }
 
     setOpen(false);
@@ -67,8 +70,8 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
     setStatus(newStatus);
   };
 
-  const handleSendNotification = async () => {
-    if (!emailTo.trim()) {
+  const handleSendManualNotification = async () => {
+    if (!manualEmail.trim()) {
       toast.error('Por favor, ingresa un correo electrónico');
       return;
     }
@@ -78,10 +81,10 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
       return;
     }
     
-    const success = await sendTaskNotificationEmail(task, emailTo);
+    const success = await sendTaskNotificationEmail(task, manualEmail);
     if (success) {
-      setEmailTo('');
-      setShowEmailForm(false);
+      setManualEmail('');
+      setShowManualNotification(false);
     }
   };
 
@@ -227,6 +230,17 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
           </div>
 
           <div>
+            <Label htmlFor="notificationEmail">Correo para notificaciones</Label>
+            <Input
+              id="notificationEmail"
+              type="email"
+              value={notificationEmail}
+              onChange={(e) => setNotificationEmail(e.target.value)}
+              placeholder="correo@ejemplo.com"
+            />
+          </div>
+
+          <div>
             <Label htmlFor="notificationTime">Hora de notificación</Label>
             <Input
               id="notificationTime"
@@ -244,29 +258,30 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
                 <Button 
                   variant="outline" 
                   className="w-full flex items-center justify-center" 
-                  onClick={() => setShowEmailForm(!showEmailForm)}
+                  onClick={() => setShowManualNotification(!showManualNotification)}
                 >
-                  <Mail className="h-4 w-4 mr-2" />
-                  {showEmailForm ? 'Ocultar' : 'Enviar notificación por correo'}
+                  <Settings className="h-4 w-4 mr-2" />
+                  {showManualNotification ? 'Ocultar' : 'Enviar notificación manual'}
                 </Button>
                 
-                {showEmailForm && (
+                {showManualNotification && (
                   <div className="mt-3 space-y-3">
                     <div>
-                      <Label htmlFor="emailTo">Correo electrónico</Label>
+                      <Label htmlFor="manualEmail">Correo electrónico</Label>
                       <Input
-                        id="emailTo"
+                        id="manualEmail"
                         type="email"
-                        value={emailTo}
-                        onChange={(e) => setEmailTo(e.target.value)}
+                        value={manualEmail}
+                        onChange={(e) => setManualEmail(e.target.value)}
                         placeholder="usuario@ejemplo.com"
                       />
                     </div>
                     <Button 
-                      onClick={handleSendNotification} 
+                      onClick={handleSendManualNotification} 
                       className="w-full bg-amber-500 hover:bg-amber-600"
                     >
-                      Enviar notificación
+                      <Mail className="h-4 w-4 mr-2" />
+                      Enviar ahora
                     </Button>
                   </div>
                 )}
