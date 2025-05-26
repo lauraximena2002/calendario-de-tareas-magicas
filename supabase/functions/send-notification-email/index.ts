@@ -19,7 +19,7 @@ interface EmailPayload {
   isOverdue?: boolean;
 }
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+const resend = new Resend("re_MvKScxmx_Pqy3QD2Bqazq3NrQRqxjFEqW");
 
 const sendEmail = async (payload: EmailPayload) => {
   try {
@@ -112,6 +112,8 @@ serve(async (req) => {
     if (req.method === "POST") {
       const { to, taskTitle, dueDate, taskDescription, company, subject, isOverdue } = await req.json();
       
+      console.log("Enviando email a:", to);
+      
       const result = await sendEmail({
         to,
         subject: subject || (isOverdue ? "⚠️ Tarea Vencida" : "📅 Recordatorio de tarea"),
@@ -178,6 +180,8 @@ serve(async (req) => {
           
           // Solo enviar si no hay notificación de hoy
           if (!todayNotification) {
+            console.log(`Enviando notificación para tarea: ${task.title} a: ${task.notification_email}`);
+            
             const emailResult = await sendEmail({
               to: task.notification_email,
               subject: isOverdue ? `⚠️ TAREA VENCIDA: "${task.title}"` : `📅 RECORDATORIO: "${task.title}" vence en ${notifyDaysBefore} días`,

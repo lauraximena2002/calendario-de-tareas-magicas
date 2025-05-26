@@ -140,48 +140,6 @@ export const getAllTasks = async (): Promise<Task[]> => {
   }
 };
 
-// Enviar correo de notificación manualmente
-export const sendTaskNotificationEmail = async (task: Task, emailTo: string): Promise<boolean> => {
-  try {
-    const today = new Date();
-    const isOverdue = task.date < today && format(task.date, 'yyyy-MM-dd') !== format(today, 'yyyy-MM-dd');
-    
-    const { data, error } = await supabase.functions.invoke('send-notification-email', {
-      body: {
-        to: emailTo,
-        taskTitle: task.title,
-        dueDate: format(task.date, 'dd/MM/yyyy'),
-        taskDescription: task.description,
-        company: task.company,
-        subject: isOverdue ? `⚠️ TAREA VENCIDA: "${task.title}"` : `📅 RECORDATORIO: "${task.title}" - Tarea pendiente`,
-        isOverdue
-      }
-    });
-
-    if (error) {
-      throw error;
-    }
-
-    if (data.success) {
-      await supabase
-        .from('notifications')
-        .insert({
-          task_id: task.id,
-          email_sent_to: emailTo
-        });
-
-      toast.success(isOverdue ? 'Notificación de tarea vencida enviada' : 'Notificación enviada correctamente');
-      return true;
-    } else {
-      throw new Error(data.message || 'Error al enviar notificación');
-    }
-  } catch (error) {
-    console.error('Error al enviar notificación:', error);
-    toast.error('Error al enviar la notificación: ' + (error.message || 'Error desconocido'));
-    return false;
-  }
-};
-
 // Función para verificar notificaciones automáticas
 export const checkAutomaticNotifications = async (): Promise<void> => {
   try {
