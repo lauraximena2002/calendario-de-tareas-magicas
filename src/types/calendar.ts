@@ -9,6 +9,7 @@ export interface Task {
   owner?: string;
   notifyDaysBefore?: number;
   notificationEmail?: string;
+  notificationTime?: string;
   createdAt: Date;
   updatedAt: Date;
 }

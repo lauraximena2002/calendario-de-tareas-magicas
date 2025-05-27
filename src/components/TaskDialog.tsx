@@ -10,10 +10,11 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Calendar as CalendarIcon, Plus, Check } from 'lucide-react';
+import { Calendar as CalendarIcon, Plus, Check, Send } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Task } from '@/types/calendar';
 import { NotificationHistory } from './NotificationHistory';
+import { sendManualNotification } from '@/services/taskService';
 
 interface TaskDialogProps {
   task?: Task;
@@ -32,6 +33,8 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
   const [owner, setOwner] = useState(task?.owner || '');
   const [notifyDaysBefore, setNotifyDaysBefore] = useState(task?.notifyDaysBefore || 3);
   const [notificationEmail, setNotificationEmail] = useState(task?.notificationEmail || '');
+  const [notificationTime, setNotificationTime] = useState(task?.notificationTime || '09:00');
+  const [isSendingNotification, setIsSendingNotification] = useState(false);
 
   const handleSave = () => {
     if (!title.trim()) return;
@@ -45,6 +48,7 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
       owner,
       notifyDaysBefore,
       notificationEmail,
+      notificationTime,
     });
 
     if (!task) {
@@ -56,6 +60,7 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
       setOwner('');
       setNotifyDaysBefore(3);
       setNotificationEmail('');
+      setNotificationTime('09:00');
     }
 
     setOpen(false);
@@ -63,6 +68,17 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
   
   const handleStatusChange = (newStatus: 'pendiente' | 'en-proceso' | 'hecho') => {
     setStatus(newStatus);
+  };
+
+  const handleSendNotification = async () => {
+    if (!task?.id) return;
+    
+    setIsSendingNotification(true);
+    try {
+      await sendManualNotification(task.id);
+    } finally {
+      setIsSendingNotification(false);
+    }
   };
 
   return (
@@ -195,33 +211,63 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
           </div>
 
           <div>
-            <Label htmlFor="notificationEmail">Correo para notificaciones automáticas</Label>
+            <Label htmlFor="notificationEmail">Correos para notificaciones</Label>
             <Input
               id="notificationEmail"
               type="email"
               value={notificationEmail}
               onChange={(e) => setNotificationEmail(e.target.value)}
-              placeholder="ejemplo@gmail.com"
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="notify">Notificar días antes</Label>
-            <Input
-              id="notify"
-              type="number"
-              min="0"
-              max="30"
-              value={notifyDaysBefore}
-              onChange={(e) => setNotifyDaysBefore(parseInt(e.target.value) || 0)}
+              placeholder="correo1@gmail.com, correo2@gmail.com"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Se enviará una notificación automática al correo especificado
+              Separa múltiples correos con comas
             </p>
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="notify">Notificar días antes</Label>
+              <Input
+                id="notify"
+                type="number"
+                min="0"
+                max="30"
+                value={notifyDaysBefore}
+                onChange={(e) => setNotifyDaysBefore(parseInt(e.target.value) || 0)}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="notificationTime">Hora de notificación</Label>
+              <Input
+                id="notificationTime"
+                type="time"
+                value={notificationTime}
+                onChange={(e) => setNotificationTime(e.target.value)}
+              />
+            </div>
+          </div>
+
           {task && (
-            <NotificationHistory taskId={task.id} />
+            <>
+              <NotificationHistory taskId={task.id} />
+              
+              {task.notificationEmail && (
+                <div className="border-t pt-4">
+                  <Button 
+                    onClick={handleSendNotification}
+                    disabled={isSendingNotification}
+                    className="w-full bg-blue-500 hover:bg-blue-600"
+                  >
+                    <Send className="h-4 w-4 mr-1" />
+                    {isSendingNotification ? 'Enviando...' : 'Enviar Notificación Ahora'}
+                  </Button>
+                  <p className="text-xs text-gray-500 mt-1 text-center">
+                    Enviar notificación manual a: {task.notificationEmail}
+                  </p>
+                </div>
+              )}
+            </>
           )}
 
           <div className="flex gap-2 pt-4">
