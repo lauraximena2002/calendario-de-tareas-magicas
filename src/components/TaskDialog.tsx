@@ -32,7 +32,6 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
   const [owner, setOwner] = useState(task?.owner || '');
   const [notifyDaysBefore, setNotifyDaysBefore] = useState(task?.notifyDaysBefore || 3);
   const [notificationEmail, setNotificationEmail] = useState(task?.notificationEmail || '');
-  const [notificationTime, setNotificationTime] = useState('09:00');
 
   const handleSave = () => {
     if (!title.trim()) return;
@@ -196,13 +195,13 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
           </div>
 
           <div>
-            <Label htmlFor="notificationEmail">Correo para notificaciones</Label>
+            <Label htmlFor="notificationEmail">Correo para notificaciones automáticas</Label>
             <Input
               id="notificationEmail"
               type="email"
               value={notificationEmail}
               onChange={(e) => setNotificationEmail(e.target.value)}
-              placeholder="tatianarincon104@gmail.com"
+              placeholder="ejemplo@gmail.com"
             />
           </div>
 
@@ -216,16 +215,9 @@ export const TaskDialog = ({ task, defaultDate, onSave, trigger }: TaskDialogPro
               value={notifyDaysBefore}
               onChange={(e) => setNotifyDaysBefore(parseInt(e.target.value) || 0)}
             />
-          </div>
-
-          <div>
-            <Label htmlFor="notificationTime">Hora de notificación</Label>
-            <Input
-              id="notificationTime"
-              type="time"
-              value={notificationTime}
-              onChange={(e) => setNotificationTime(e.target.value)}
-            />
+            <p className="text-xs text-gray-500 mt-1">
+              Se enviará una notificación automática al correo especificado
+            </p>
           </div>
 
           {task && (

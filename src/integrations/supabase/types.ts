@@ -45,6 +45,7 @@ export type Database = {
           date: string
           description: string | null
           id: string
+          notification_email: string | null
           notify_days_before: number | null
           owner: string | null
           status: string
@@ -57,6 +58,7 @@ export type Database = {
           date: string
           description?: string | null
           id?: string
+          notification_email?: string | null
           notify_days_before?: number | null
           owner?: string | null
           status: string
@@ -69,6 +71,7 @@ export type Database = {
           date?: string
           description?: string | null
           id?: string
+          notification_email?: string | null
           notify_days_before?: number | null
           owner?: string | null
           status?: string
