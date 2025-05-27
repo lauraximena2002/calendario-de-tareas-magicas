@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Task } from "@/types/calendar";
 import { toast } from "@/components/ui/sonner";
@@ -178,6 +179,8 @@ export const sendManualNotification = async (taskId: string): Promise<boolean> =
 
     // Enviar notificación a cada correo
     for (const email of emails) {
+      console.log('Preparando envío de email a:', email);
+      
       const { data, error } = await supabase.functions.invoke('send-notification-email', {
         body: {
           to: email,
@@ -192,7 +195,7 @@ export const sendManualNotification = async (taskId: string): Promise<boolean> =
 
       if (error) {
         console.error('Error enviando email a', email, ':', error);
-        toast.error(`Error enviando email a ${email}`);
+        toast.error(`Error enviando email a ${email}: ${error.message}`);
         return false;
       }
 
@@ -201,19 +204,23 @@ export const sendManualNotification = async (taskId: string): Promise<boolean> =
 
     // Registrar la notificación enviada para cada email
     for (const email of emails) {
-      await supabase
+      const { error: notificationError } = await supabase
         .from('notifications')
         .insert({
           task_id: taskId,
           email_sent_to: email
         });
+      
+      if (notificationError) {
+        console.error('Error registrando notificación para:', email, notificationError);
+      }
     }
 
     toast.success(`Notificación enviada exitosamente a ${emails.length} destinatario(s)`);
     return true;
   } catch (error) {
     console.error('Error enviando notificación manual:', error);
-    toast.error('Error al enviar la notificación');
+    toast.error('Error al enviar la notificación: ' + error.message);
     return false;
   }
 };
