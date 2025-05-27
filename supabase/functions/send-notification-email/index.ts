@@ -19,7 +19,7 @@ interface EmailPayload {
   isOverdue?: boolean;
 }
 
-const resend = new Resend("re_MvKScxmx_Pqy3QD2Bqazq3NrQRqxjFEqW");
+const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const sendEmail = async (payload: EmailPayload) => {
   try {
@@ -165,60 +165,70 @@ serve(async (req) => {
         if (shouldNotify && task.notification_email) {
           const isOverdue = daysUntilDue < 0;
           
-          // Verificar si ya enviamos notificación hoy para esta tarea
-          const startOfDay = new Date(today);
-          const endOfDay = new Date(today);
-          endOfDay.setHours(23, 59, 59, 999);
+          // Dividir correos por coma y limpiar espacios
+          const emails = task.notification_email.split(',').map(email => email.trim()).filter(email => email);
           
-          const { data: todayNotification } = await supabase
-            .from("notifications")
-            .select("*")
-            .eq("task_id", task.id)
-            .gte("sent_at", startOfDay.toISOString())
-            .lte("sent_at", endOfDay.toISOString())
-            .maybeSingle();
-          
-          // Solo enviar si no hay notificación de hoy
-          if (!todayNotification) {
-            console.log(`Enviando notificación para tarea: ${task.title} a: ${task.notification_email}`);
+          for (const email of emails) {
+            // Verificar si ya enviamos notificación hoy para esta tarea y este email
+            const startOfDay = new Date(today);
+            const endOfDay = new Date(today);
+            endOfDay.setHours(23, 59, 59, 999);
             
-            const emailResult = await sendEmail({
-              to: task.notification_email,
-              subject: isOverdue ? `⚠️ TAREA VENCIDA: "${task.title}"` : `📅 RECORDATORIO: "${task.title}" vence en ${notifyDaysBefore} días`,
-              taskTitle: task.title,
-              dueDate: new Date(task.date).toLocaleDateString('es-ES'),
-              taskDescription: task.description,
-              company: task.company,
-              isOverdue
-            });
+            const { data: todayNotification } = await supabase
+              .from("notifications")
+              .select("*")
+              .eq("task_id", task.id)
+              .eq("email_sent_to", email)
+              .gte("sent_at", startOfDay.toISOString())
+              .lte("sent_at", endOfDay.toISOString())
+              .maybeSingle();
             
-            // Registrar la notificación enviada
-            if (emailResult.success) {
-              await supabase
-                .from("notifications")
-                .insert({
-                  task_id: task.id,
-                  email_sent_to: task.notification_email
-                });
+            // Solo enviar si no hay notificación de hoy para este email específico
+            if (!todayNotification) {
+              console.log(`Enviando notificación para tarea: ${task.title} a: ${email}`);
               
+              // Mostrar la fecha límite real de la tarea, no la fecha de notificación
+              const taskDueDate = new Date(task.date).toLocaleDateString('es-ES');
+              
+              const emailResult = await sendEmail({
+                to: email,
+                subject: isOverdue ? `⚠️ TAREA VENCIDA: "${task.title}"` : `📅 RECORDATORIO: "${task.title}" vence el ${taskDueDate}`,
+                taskTitle: task.title,
+                dueDate: taskDueDate, // Usar la fecha límite real de la tarea
+                taskDescription: task.description,
+                company: task.company,
+                isOverdue
+              });
+              
+              // Registrar la notificación enviada para este email específico
+              if (emailResult.success) {
+                await supabase
+                  .from("notifications")
+                  .insert({
+                    task_id: task.id,
+                    email_sent_to: email
+                  });
+                
+                results.push({
+                  taskId: task.id,
+                  taskTitle: task.title,
+                  emailSentTo: email,
+                  status: isOverdue ? "notificación de vencida enviada" : "notificación de recordatorio enviada",
+                  daysUntilDue,
+                  isOverdue,
+                  actualDueDate: taskDueDate
+                });
+              }
+            } else {
               results.push({
                 taskId: task.id,
                 taskTitle: task.title,
-                emailSentTo: task.notification_email,
-                status: isOverdue ? "notificación de vencida enviada" : "notificación de recordatorio enviada",
+                emailSentTo: email,
+                status: "notificación ya enviada hoy",
                 daysUntilDue,
-                isOverdue
+                isOverdue: daysUntilDue < 0
               });
             }
-          } else {
-            results.push({
-              taskId: task.id,
-              taskTitle: task.title,
-              emailSentTo: task.notification_email,
-              status: "notificación ya enviada hoy",
-              daysUntilDue,
-              isOverdue: daysUntilDue < 0
-            });
           }
         }
       }

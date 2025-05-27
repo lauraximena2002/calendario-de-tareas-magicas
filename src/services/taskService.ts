@@ -177,6 +177,9 @@ export const sendManualNotification = async (taskId: string): Promise<boolean> =
     
     console.log('Enviando notificación a correos:', emails);
 
+    // Obtener la fecha límite real de la tarea
+    const taskDueDate = new Date(task.date).toLocaleDateString('es-ES');
+
     // Enviar notificación a cada correo
     for (const email of emails) {
       console.log('Preparando envío de email a:', email);
@@ -185,7 +188,7 @@ export const sendManualNotification = async (taskId: string): Promise<boolean> =
         body: {
           to: email,
           taskTitle: task.title,
-          dueDate: new Date(task.date).toLocaleDateString('es-ES'),
+          dueDate: taskDueDate, // Usar la fecha límite real de la tarea
           taskDescription: task.description,
           company: task.company,
           subject: `📅 NOTIFICACIÓN MANUAL: ${task.title}`,
