@@ -177,8 +177,11 @@ export const sendManualNotification = async (taskId: string): Promise<boolean> =
     
     console.log('Enviando notificación a correos:', emails);
 
-    // Obtener la fecha límite real de la tarea
-    const taskDueDate = new Date(task.date).toLocaleDateString('es-ES');
+    // Usar la fecha límite real de la tarea (sin problemas de zona horaria)
+    const taskDueDate = new Date(task.date + 'T00:00:00').toLocaleDateString('es-ES');
+
+    let successCount = 0;
+    let errorCount = 0;
 
     // Enviar notificación a cada correo
     for (const email of emails) {
@@ -188,7 +191,7 @@ export const sendManualNotification = async (taskId: string): Promise<boolean> =
         body: {
           to: email,
           taskTitle: task.title,
-          dueDate: taskDueDate, // Usar la fecha límite real de la tarea
+          dueDate: taskDueDate,
           taskDescription: task.description,
           company: task.company,
           subject: `📅 NOTIFICACIÓN MANUAL: ${task.title}`,
@@ -198,29 +201,35 @@ export const sendManualNotification = async (taskId: string): Promise<boolean> =
 
       if (error) {
         console.error('Error enviando email a', email, ':', error);
-        toast.error(`Error enviando email a ${email}: ${error.message}`);
-        return false;
-      }
-
-      console.log('Email enviado exitosamente a:', email, data);
-    }
-
-    // Registrar la notificación enviada para cada email
-    for (const email of emails) {
-      const { error: notificationError } = await supabase
-        .from('notifications')
-        .insert({
-          task_id: taskId,
-          email_sent_to: email
-        });
-      
-      if (notificationError) {
-        console.error('Error registrando notificación para:', email, notificationError);
+        errorCount++;
+      } else {
+        console.log('Email enviado exitosamente a:', email, data);
+        successCount++;
+        
+        // Registrar la notificación enviada para cada email
+        const { error: notificationError } = await supabase
+          .from('notifications')
+          .insert({
+            task_id: taskId,
+            email_sent_to: email
+          });
+        
+        if (notificationError) {
+          console.error('Error registrando notificación para:', email, notificationError);
+        }
       }
     }
 
-    toast.success(`Notificación enviada exitosamente a ${emails.length} destinatario(s)`);
-    return true;
+    if (successCount > 0) {
+      toast.success(`Notificación enviada exitosamente a ${successCount} destinatario(s)`);
+      if (errorCount > 0) {
+        toast.error(`${errorCount} emails fallaron al enviarse`);
+      }
+      return true;
+    } else {
+      toast.error('No se pudo enviar ninguna notificación');
+      return false;
+    }
   } catch (error) {
     console.error('Error enviando notificación manual:', error);
     toast.error('Error al enviar la notificación: ' + error.message);

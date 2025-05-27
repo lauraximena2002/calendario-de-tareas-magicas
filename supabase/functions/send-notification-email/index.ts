@@ -19,7 +19,7 @@ interface EmailPayload {
   isOverdue?: boolean;
 }
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+const resend = new Resend("re_MvKScxmx_Pqy3QD2Bqazq3NrQRqxjFEqW");
 
 const sendEmail = async (payload: EmailPayload) => {
   try {
@@ -77,6 +77,8 @@ const sendEmail = async (payload: EmailPayload) => {
       </html>
     `;
 
+    console.log("Intentando enviar email a:", payload.to);
+    
     const result = await resend.emails.send({
       from: "Sistema de Tareas <onboarding@resend.dev>",
       to: [payload.to],
@@ -94,7 +96,7 @@ const sendEmail = async (payload: EmailPayload) => {
     
     return { success: true, message: "Email enviado exitosamente", messageId: result.data?.id };
   } catch (error) {
-    console.error("Error enviando email:", error);
+    console.error("Error enviando email a", payload.to, ":", error);
     return { success: false, message: "Error al enviar email", error: error.message };
   }
 };
@@ -112,7 +114,15 @@ serve(async (req) => {
     if (req.method === "POST") {
       const { to, taskTitle, dueDate, taskDescription, company, subject, isOverdue } = await req.json();
       
-      console.log("Enviando email a:", to);
+      console.log("Datos recibidos para envío:", {
+        to,
+        taskTitle,
+        dueDate,
+        taskDescription,
+        company,
+        subject,
+        isOverdue
+      });
       
       const result = await sendEmail({
         to,
@@ -168,6 +178,8 @@ serve(async (req) => {
           // Dividir correos por coma y limpiar espacios
           const emails = task.notification_email.split(',').map(email => email.trim()).filter(email => email);
           
+          console.log("Emails para notificar:", emails, "para tarea:", task.title);
+          
           for (const email of emails) {
             // Verificar si ya enviamos notificación hoy para esta tarea y este email
             const startOfDay = new Date(today);
@@ -187,14 +199,14 @@ serve(async (req) => {
             if (!todayNotification) {
               console.log(`Enviando notificación para tarea: ${task.title} a: ${email}`);
               
-              // Mostrar la fecha límite real de la tarea, no la fecha de notificación
-              const taskDueDate = new Date(task.date).toLocaleDateString('es-ES');
+              // Usar la fecha límite real de la tarea (no ajustar por zona horaria)
+              const taskDueDate = new Date(task.date + 'T00:00:00').toLocaleDateString('es-ES');
               
               const emailResult = await sendEmail({
                 to: email,
                 subject: isOverdue ? `⚠️ TAREA VENCIDA: "${task.title}"` : `📅 RECORDATORIO: "${task.title}" vence el ${taskDueDate}`,
                 taskTitle: task.title,
-                dueDate: taskDueDate, // Usar la fecha límite real de la tarea
+                dueDate: taskDueDate,
                 taskDescription: task.description,
                 company: task.company,
                 isOverdue
@@ -217,6 +229,16 @@ serve(async (req) => {
                   daysUntilDue,
                   isOverdue,
                   actualDueDate: taskDueDate
+                });
+              } else {
+                results.push({
+                  taskId: task.id,
+                  taskTitle: task.title,
+                  emailSentTo: email,
+                  status: "error al enviar",
+                  error: emailResult.error,
+                  daysUntilDue,
+                  isOverdue
                 });
               }
             } else {
