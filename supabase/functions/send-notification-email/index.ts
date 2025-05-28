@@ -124,18 +124,43 @@ serve(async (req) => {
         isOverdue
       });
       
-      const result = await sendEmail({
-        to,
-        subject: subject || (isOverdue ? "⚠️ Tarea Vencida" : "📅 Recordatorio de tarea"),
-        taskTitle,
-        dueDate,
-        taskDescription,
-        company,
-        isOverdue
-      });
+      // Separar correos por coma y limpiar espacios
+      const emails = to.split(',').map(email => email.trim()).filter(email => email && email.includes('@'));
+      console.log("Emails procesados:", emails);
+      
+      let successCount = 0;
+      let errorCount = 0;
+      const results = [];
+      
+      // Enviar a cada email por separado
+      for (const email of emails) {
+        const result = await sendEmail({
+          to: email,
+          subject: subject || (isOverdue ? "⚠️ Tarea Vencida" : "📅 Recordatorio de tarea"),
+          taskTitle,
+          dueDate,
+          taskDescription,
+          company,
+          isOverdue
+        });
+        
+        results.push({ email, result });
+        
+        if (result.success) {
+          successCount++;
+        } else {
+          errorCount++;
+        }
+      }
       
       return new Response(
-        JSON.stringify(result),
+        JSON.stringify({
+          success: successCount > 0,
+          message: `${successCount} emails enviados exitosamente, ${errorCount} fallaron`,
+          results,
+          successCount,
+          errorCount
+        }),
         {
           status: 200,
           headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -145,8 +170,10 @@ serve(async (req) => {
     
     // Endpoint para verificar y enviar notificaciones automáticas
     if (req.method === "GET") {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      console.log("🔍 Iniciando verificación de notificaciones automáticas...");
+      
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       
       // Obtener tareas que necesitan notificación y tienen email configurado
       const { data: tasks, error } = await supabase
@@ -156,29 +183,36 @@ serve(async (req) => {
         .not("notification_email", "is", null);
       
       if (error) {
+        console.error("Error obteniendo tareas:", error);
         throw error;
       }
+      
+      console.log(`📋 Encontradas ${tasks?.length || 0} tareas para revisar`);
       
       const results = [];
       
       for (const task of tasks || []) {
-        const dueDate = new Date(task.date);
-        dueDate.setHours(0, 0, 0, 0);
-        const daysUntilDue = Math.floor((dueDate.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+        console.log(`🔎 Revisando tarea: ${task.title} (${task.id})`);
+        
+        const taskDate = new Date(task.date + 'T00:00:00');
+        const daysUntilDue = Math.floor((taskDate.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
         const notifyDaysBefore = task.notify_days_before || 3;
         
-        // Solo enviar notificación si:
-        // 1. Faltan exactamente los días configurados (ej: 3 días antes)
-        // 2. O si está vencida (días negativos) - para recordatorios diarios de tareas vencidas
+        console.log(`📅 Tarea "${task.title}": días hasta vencimiento = ${daysUntilDue}, notificar ${notifyDaysBefore} días antes`);
+        
+        // Verificar si debe notificar
         const shouldNotify = (daysUntilDue === notifyDaysBefore) || (daysUntilDue < 0);
         
         if (shouldNotify && task.notification_email) {
           const isOverdue = daysUntilDue < 0;
+          console.log(`📨 Debe notificar para tarea "${task.title}" (${isOverdue ? 'VENCIDA' : 'PRÓXIMA'})`);
           
-          // Dividir correos por coma y limpiar espacios
-          const emails = task.notification_email.split(',').map(email => email.trim()).filter(email => email);
+          // Separar correos correctamente
+          const emails = task.notification_email.split(',')
+            .map(email => email.trim())
+            .filter(email => email && email.includes('@'));
           
-          console.log("Emails para notificar:", emails, "para tarea:", task.title);
+          console.log(`📧 Emails para notificar:`, emails);
           
           for (const email of emails) {
             // Verificar si ya enviamos notificación hoy para esta tarea y este email
@@ -195,12 +229,11 @@ serve(async (req) => {
               .lte("sent_at", endOfDay.toISOString())
               .maybeSingle();
             
-            // Solo enviar si no hay notificación de hoy para este email específico
             if (!todayNotification) {
-              console.log(`Enviando notificación para tarea: ${task.title} a: ${email}`);
+              console.log(`✉️ Enviando notificación para tarea: ${task.title} a: ${email}`);
               
-              // Usar la fecha límite real de la tarea (no ajustar por zona horaria)
-              const taskDueDate = new Date(task.date + 'T00:00:00').toLocaleDateString('es-ES');
+              // Usar la fecha límite real de la tarea
+              const taskDueDate = taskDate.toLocaleDateString('es-ES');
               
               const emailResult = await sendEmail({
                 to: email,
@@ -212,7 +245,7 @@ serve(async (req) => {
                 isOverdue
               });
               
-              // Registrar la notificación enviada para este email específico
+              // Registrar la notificación enviada
               if (emailResult.success) {
                 await supabase
                   .from("notifications")
@@ -242,6 +275,7 @@ serve(async (req) => {
                 });
               }
             } else {
+              console.log(`⏭️ Notificación ya enviada hoy para tarea "${task.title}" a ${email}`);
               results.push({
                 taskId: task.id,
                 taskTitle: task.title,
@@ -252,15 +286,20 @@ serve(async (req) => {
               });
             }
           }
+        } else {
+          console.log(`⏸️ No debe notificar para tarea "${task.title}" (días: ${daysUntilDue}, configurado: ${notifyDaysBefore})`);
         }
       }
+      
+      console.log("✅ Verificación de notificaciones automáticas completada");
       
       return new Response(
         JSON.stringify({ 
           success: true, 
           notifications: results,
           totalChecked: tasks?.length || 0,
-          notificationsSent: results.filter(r => r.status.includes("enviada")).length
+          notificationsSent: results.filter(r => r.status.includes("enviada")).length,
+          timestamp: new Date().toISOString()
         }),
         {
           status: 200,

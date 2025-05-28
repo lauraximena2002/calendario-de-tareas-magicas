@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from 'react';
 import { Task, CalendarDay } from '@/types/calendar';
 import { startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isToday, format, differenceInDays, isPast } from 'date-fns';
@@ -31,9 +30,18 @@ export const useCalendar = () => {
     fetchTasks();
   }, []);
 
-  // Verificar notificaciones automáticas al cargar
+  // Verificar notificaciones automáticas cada 5 minutos
   useEffect(() => {
+    // Verificar inmediatamente al cargar
     checkAutomaticNotifications();
+    
+    // Configurar intervalo para verificar cada 5 minutos
+    const interval = setInterval(() => {
+      console.log('⏰ Ejecutando verificación automática de notificaciones...');
+      checkAutomaticNotifications();
+    }, 5 * 60 * 1000); // 5 minutos
+
+    return () => clearInterval(interval);
   }, []);
 
   // Check for upcoming tasks that need notifications and overdue tasks

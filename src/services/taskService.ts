@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Task } from "@/types/calendar";
 import { toast } from "@/components/ui/sonner";
@@ -172,63 +171,55 @@ export const sendManualNotification = async (taskId: string): Promise<boolean> =
       return false;
     }
 
-    // Dividir correos por coma y limpiar espacios
-    const emails = task.notification_email.split(',').map(email => email.trim()).filter(email => email);
-    
-    console.log('Enviando notificación a correos:', emails);
+    console.log('Enviando notificación a correos:', task.notification_email);
 
     // Usar la fecha límite real de la tarea (sin problemas de zona horaria)
     const taskDueDate = new Date(task.date + 'T00:00:00').toLocaleDateString('es-ES');
 
-    let successCount = 0;
-    let errorCount = 0;
-
-    // Enviar notificación a cada correo
-    for (const email of emails) {
-      console.log('Preparando envío de email a:', email);
-      
-      const { data, error } = await supabase.functions.invoke('send-notification-email', {
-        body: {
-          to: email,
-          taskTitle: task.title,
-          dueDate: taskDueDate,
-          taskDescription: task.description,
-          company: task.company,
-          subject: `📅 NOTIFICACIÓN MANUAL: ${task.title}`,
-          isOverdue: false
-        }
-      });
-
-      if (error) {
-        console.error('Error enviando email a', email, ':', error);
-        errorCount++;
-      } else {
-        console.log('Email enviado exitosamente a:', email, data);
-        successCount++;
-        
-        // Registrar la notificación enviada para cada email
-        const { error: notificationError } = await supabase
-          .from('notifications')
-          .insert({
-            task_id: taskId,
-            email_sent_to: email
-          });
-        
-        if (notificationError) {
-          console.error('Error registrando notificación para:', email, notificationError);
-        }
+    console.log('Preparando envío de email con fecha:', taskDueDate);
+    
+    const { data, error } = await supabase.functions.invoke('send-notification-email', {
+      body: {
+        to: task.notification_email, // Enviar todos los correos como string separado por comas
+        taskTitle: task.title,
+        dueDate: taskDueDate,
+        taskDescription: task.description,
+        company: task.company,
+        subject: `📅 NOTIFICACIÓN MANUAL: ${task.title}`,
+        isOverdue: false
       }
-    }
+    });
 
-    if (successCount > 0) {
-      toast.success(`Notificación enviada exitosamente a ${successCount} destinatario(s)`);
-      if (errorCount > 0) {
-        toast.error(`${errorCount} emails fallaron al enviarse`);
-      }
-      return true;
-    } else {
-      toast.error('No se pudo enviar ninguna notificación');
+    if (error) {
+      console.error('Error enviando email:', error);
+      toast.error('Error al enviar la notificación: ' + error.message);
       return false;
+    } else {
+      console.log('Respuesta del envío:', data);
+      
+      if (data.success && data.successCount > 0) {
+        toast.success(`Notificación enviada exitosamente a ${data.successCount} destinatario(s)`);
+        
+        if (data.errorCount > 0) {
+          toast.error(`${data.errorCount} emails fallaron al enviarse`);
+        }
+        
+        // Registrar las notificaciones enviadas exitosamente
+        const emails = task.notification_email.split(',').map(email => email.trim()).filter(email => email);
+        for (const email of emails) {
+          await supabase
+            .from('notifications')
+            .insert({
+              task_id: taskId,
+              email_sent_to: email
+            });
+        }
+        
+        return true;
+      } else {
+        toast.error('No se pudo enviar ninguna notificación');
+        return false;
+      }
     }
   } catch (error) {
     console.error('Error enviando notificación manual:', error);
@@ -240,7 +231,7 @@ export const sendManualNotification = async (taskId: string): Promise<boolean> =
 // Función para verificar notificaciones automáticas
 export const checkAutomaticNotifications = async (): Promise<void> => {
   try {
-    console.log('Verificando notificaciones automáticas...');
+    console.log('🔄 Verificando notificaciones automáticas...');
     
     const { data, error } = await supabase.functions.invoke('send-notification-email', {
       body: {},
@@ -250,7 +241,10 @@ export const checkAutomaticNotifications = async (): Promise<void> => {
     if (error) {
       console.error('Error checking notifications:', error);
     } else {
-      console.log('Notifications check result:', data);
+      console.log('✅ Resultado de verificación de notificaciones:', data);
+      if (data.notificationsSent > 0) {
+        console.log(`📨 Se enviaron ${data.notificationsSent} notificaciones automáticas`);
+      }
     }
   } catch (error) {
     console.error('Error in automatic notifications check:', error);
