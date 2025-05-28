@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Task } from "@/types/calendar";
 import { toast } from "@/components/ui/sonner";
@@ -171,16 +172,31 @@ export const sendManualNotification = async (taskId: string): Promise<boolean> =
       return false;
     }
 
-    console.log('Enviando notificación a correos:', task.notification_email);
+    // Limpiar y validar emails
+    const emailString = task.notification_email.trim();
+    console.log('Emails originales:', emailString);
+    
+    // Separar emails correctamente
+    const emails = emailString.split(/[,;]/)
+      .map(email => email.trim())
+      .filter(email => email && email.includes('@'));
+    
+    console.log('Emails procesados:', emails);
+    
+    if (emails.length === 0) {
+      toast.error('No se encontraron emails válidos');
+      return false;
+    }
 
-    // Usar la fecha límite real de la tarea (sin problemas de zona horaria)
+    // Usar la fecha límite real de la tarea
     const taskDueDate = new Date(task.date + 'T00:00:00').toLocaleDateString('es-ES');
 
     console.log('Preparando envío de email con fecha:', taskDueDate);
+    console.log('Enviando a emails separados por comas:', emails.join(', '));
     
     const { data, error } = await supabase.functions.invoke('send-notification-email', {
       body: {
-        to: task.notification_email,
+        to: emails.join(', '), // Enviar como string separado por comas
         taskTitle: task.title,
         dueDate: taskDueDate,
         taskDescription: task.description,
@@ -205,7 +221,6 @@ export const sendManualNotification = async (taskId: string): Promise<boolean> =
         }
         
         // Registrar las notificaciones enviadas exitosamente
-        const emails = task.notification_email.split(',').map(email => email.trim()).filter(email => email);
         for (const email of emails) {
           await supabase
             .from('notifications')

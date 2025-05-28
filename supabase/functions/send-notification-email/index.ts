@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.8";
 import { Resend } from "npm:resend@2.0.0";
@@ -86,6 +85,11 @@ const sendEmail = async (payload: EmailPayload) => {
       html: htmlContent,
     });
 
+    if (result.error) {
+      console.error("❌ Error de Resend:", result.error);
+      return { success: false, message: "Error de Resend", error: result.error };
+    }
+
     console.log("✅ Email enviado exitosamente a:", payload.to, "- ID:", result.data?.id);
     
     return { success: true, message: "Email enviado exitosamente", messageId: result.data?.id };
@@ -93,6 +97,25 @@ const sendEmail = async (payload: EmailPayload) => {
     console.error("❌ Error enviando email a", payload.to, ":", error);
     return { success: false, message: "Error al enviar email", error: error.message };
   }
+};
+
+// Función para validar y limpiar emails
+const validateAndCleanEmails = (emailString: string): string[] => {
+  if (!emailString || typeof emailString !== 'string') {
+    return [];
+  }
+  
+  // Separar por coma, punto y coma, o espacios
+  const emails = emailString.split(/[,;|\s]+/)
+    .map(email => email.trim())
+    .filter(email => {
+      // Validar formato básico de email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return email && emailRegex.test(email);
+    });
+  
+  console.log(`📧 Emails válidos encontrados: ${emails.length} - ${JSON.stringify(emails)}`);
+  return emails;
 };
 
 serve(async (req) => {
@@ -118,15 +141,31 @@ serve(async (req) => {
         isOverdue
       });
       
-      // Separar correos por coma y limpiar espacios - MEJORADO
-      const emails = to.split(/[,;]/).map(email => email.trim()).filter(email => email && email.includes('@'));
-      console.log("📮 Emails procesados para envío:", emails);
+      // Validar y limpiar correos electrónicos
+      const emails = validateAndCleanEmails(to);
+      
+      if (emails.length === 0) {
+        console.error("❌ No se encontraron emails válidos en:", to);
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: "No se encontraron emails válidos",
+            emailsProvided: to
+          }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json", ...corsHeaders },
+          }
+        );
+      }
+      
+      console.log(`📮 Procesando ${emails.length} emails: ${JSON.stringify(emails)}`);
       
       let successCount = 0;
       let errorCount = 0;
       const results = [];
       
-      // Enviar a cada email por separado con delay para evitar rate limiting
+      // Enviar a cada email por separado con delay
       for (let i = 0; i < emails.length; i++) {
         const email = emails[i];
         console.log(`📨 Enviando email ${i + 1}/${emails.length} a: ${email}`);
@@ -145,19 +184,20 @@ serve(async (req) => {
         
         if (result.success) {
           successCount++;
-          console.log(`✅ Email ${i + 1} enviado exitosamente a: ${email}`);
+          console.log(`✅ Email ${i + 1} enviado exitosamente a: ${email} (ID: ${result.messageId})`);
         } else {
           errorCount++;
-          console.log(`❌ Error enviando email ${i + 1} a: ${email} - ${result.error}`);
+          console.log(`❌ Error enviando email ${i + 1} a: ${email} - ${JSON.stringify(result.error)}`);
         }
         
-        // Pequeño delay entre emails para evitar rate limiting
+        // Delay entre emails para evitar rate limiting
         if (i < emails.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 100));
+          console.log("⏱️ Esperando 500ms antes del próximo email...");
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
       
-      console.log(`📊 Resumen de envío: ${successCount} exitosos, ${errorCount} fallidos`);
+      console.log(`📊 Resumen final: ${successCount} exitosos, ${errorCount} fallidos de ${emails.length} emails`);
       
       return new Response(
         JSON.stringify({
@@ -166,7 +206,8 @@ serve(async (req) => {
           results,
           successCount,
           errorCount,
-          emailsSent: emails.length
+          emailsProcessed: emails.length,
+          emailsList: emails
         }),
         {
           status: 200,
