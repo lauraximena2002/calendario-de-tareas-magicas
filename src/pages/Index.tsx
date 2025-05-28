@@ -1,17 +1,16 @@
 
 import { useState } from 'react';
 import { Calendar } from '@/components/Calendar';
-import { TaskTable } from '@/components/TaskTable';
 import { StatusChart } from '@/components/StatusChart';
 import { TasksByMonth } from '@/components/TasksByMonth';
 import { useCalendar } from '@/hooks/useCalendar';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon, ListIcon, RefreshCw, BarChart3, Calendar as CalendarTableIcon } from 'lucide-react';
+import { CalendarIcon, RefreshCw, BarChart3, Calendar as CalendarTableIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/components/ui/sonner';
 
 const Index = () => {
-  const [view, setView] = useState<'calendar' | 'table' | 'chart' | 'monthly'>('calendar');
+  const [view, setView] = useState<'calendar' | 'chart' | 'monthly'>('calendar');
   
   const {
     currentDate,
@@ -62,15 +61,6 @@ const Index = () => {
               Calendario
             </Button>
             <Button 
-              variant={view === 'table' ? 'default' : 'ghost'} 
-              size="sm"
-              onClick={() => setView('table')}
-              className="flex items-center gap-1"
-            >
-              <ListIcon className="h-4 w-4" />
-              Tabla
-            </Button>
-            <Button 
               variant={view === 'chart' ? 'default' : 'ghost'} 
               size="sm"
               onClick={() => setView('chart')}
@@ -112,27 +102,13 @@ const Index = () => {
             overdueTasks={overdueTasks}
           />
         ) : view === 'chart' ? (
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <StatusChart tasks={tasks} />
-          </div>
-        ) : view === 'monthly' ? (
+          <StatusChart tasks={tasks} />
+        ) : (
           <TasksByMonth 
             tasks={tasks}
             onUpdateTask={updateTask}
             onDeleteTask={deleteTask}
           />
-        ) : (
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h1 className="text-2xl font-bold mb-6 flex items-center">
-              <ListIcon className="mr-2" />
-              Lista de tareas
-            </h1>
-            <TaskTable 
-              tasks={tasks} 
-              onUpdateTask={updateTask}
-              onDeleteTask={deleteTask}
-            />
-          </div>
         )}
       </div>
     </div>
