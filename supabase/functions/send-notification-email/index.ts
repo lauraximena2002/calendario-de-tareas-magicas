@@ -77,7 +77,7 @@ const sendEmail = async (payload: EmailPayload) => {
       </html>
     `;
 
-    console.log("Intentando enviar email a:", payload.to);
+    console.log("🚀 Intentando enviar email a:", payload.to);
     
     const result = await resend.emails.send({
       from: "Sistema de Tareas <onboarding@resend.dev>",
@@ -86,17 +86,11 @@ const sendEmail = async (payload: EmailPayload) => {
       html: htmlContent,
     });
 
-    console.log("Email enviado exitosamente:", {
-      to: payload.to,
-      subject: payload.subject,
-      messageId: result.data?.id,
-      taskTitle: payload.taskTitle,
-      status: isOverdue ? "VENCIDA" : "RECORDATORIO"
-    });
+    console.log("✅ Email enviado exitosamente a:", payload.to, "- ID:", result.data?.id);
     
     return { success: true, message: "Email enviado exitosamente", messageId: result.data?.id };
   } catch (error) {
-    console.error("Error enviando email a", payload.to, ":", error);
+    console.error("❌ Error enviando email a", payload.to, ":", error);
     return { success: false, message: "Error al enviar email", error: error.message };
   }
 };
@@ -114,7 +108,7 @@ serve(async (req) => {
     if (req.method === "POST") {
       const { to, taskTitle, dueDate, taskDescription, company, subject, isOverdue } = await req.json();
       
-      console.log("Datos recibidos para envío:", {
+      console.log("📧 Datos recibidos para envío:", {
         to,
         taskTitle,
         dueDate,
@@ -124,16 +118,19 @@ serve(async (req) => {
         isOverdue
       });
       
-      // Separar correos por coma y limpiar espacios
-      const emails = to.split(',').map(email => email.trim()).filter(email => email && email.includes('@'));
-      console.log("Emails procesados:", emails);
+      // Separar correos por coma y limpiar espacios - MEJORADO
+      const emails = to.split(/[,;]/).map(email => email.trim()).filter(email => email && email.includes('@'));
+      console.log("📮 Emails procesados para envío:", emails);
       
       let successCount = 0;
       let errorCount = 0;
       const results = [];
       
-      // Enviar a cada email por separado
-      for (const email of emails) {
+      // Enviar a cada email por separado con delay para evitar rate limiting
+      for (let i = 0; i < emails.length; i++) {
+        const email = emails[i];
+        console.log(`📨 Enviando email ${i + 1}/${emails.length} a: ${email}`);
+        
         const result = await sendEmail({
           to: email,
           subject: subject || (isOverdue ? "⚠️ Tarea Vencida" : "📅 Recordatorio de tarea"),
@@ -148,10 +145,19 @@ serve(async (req) => {
         
         if (result.success) {
           successCount++;
+          console.log(`✅ Email ${i + 1} enviado exitosamente a: ${email}`);
         } else {
           errorCount++;
+          console.log(`❌ Error enviando email ${i + 1} a: ${email} - ${result.error}`);
+        }
+        
+        // Pequeño delay entre emails para evitar rate limiting
+        if (i < emails.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
+      
+      console.log(`📊 Resumen de envío: ${successCount} exitosos, ${errorCount} fallidos`);
       
       return new Response(
         JSON.stringify({
@@ -159,7 +165,8 @@ serve(async (req) => {
           message: `${successCount} emails enviados exitosamente, ${errorCount} fallaron`,
           results,
           successCount,
-          errorCount
+          errorCount,
+          emailsSent: emails.length
         }),
         {
           status: 200,
@@ -183,7 +190,7 @@ serve(async (req) => {
         .not("notification_email", "is", null);
       
       if (error) {
-        console.error("Error obteniendo tareas:", error);
+        console.error("❌ Error obteniendo tareas:", error);
         throw error;
       }
       
@@ -200,15 +207,15 @@ serve(async (req) => {
         
         console.log(`📅 Tarea "${task.title}": días hasta vencimiento = ${daysUntilDue}, notificar ${notifyDaysBefore} días antes`);
         
-        // Verificar si debe notificar
+        // Verificar si debe notificar - CORREGIDO
         const shouldNotify = (daysUntilDue === notifyDaysBefore) || (daysUntilDue < 0);
         
         if (shouldNotify && task.notification_email) {
           const isOverdue = daysUntilDue < 0;
           console.log(`📨 Debe notificar para tarea "${task.title}" (${isOverdue ? 'VENCIDA' : 'PRÓXIMA'})`);
           
-          // Separar correos correctamente
-          const emails = task.notification_email.split(',')
+          // Separar correos correctamente - MEJORADO
+          const emails = task.notification_email.split(/[,;]/)
             .map(email => email.trim())
             .filter(email => email && email.includes('@'));
           
@@ -232,7 +239,7 @@ serve(async (req) => {
             if (!todayNotification) {
               console.log(`✉️ Enviando notificación para tarea: ${task.title} a: ${email}`);
               
-              // Usar la fecha límite real de la tarea
+              // Usar la fecha límite real de la tarea - CORREGIDO
               const taskDueDate = taskDate.toLocaleDateString('es-ES');
               
               const emailResult = await sendEmail({
@@ -291,14 +298,15 @@ serve(async (req) => {
         }
       }
       
-      console.log("✅ Verificación de notificaciones automáticas completada");
+      const notificationsSent = results.filter(r => r.status.includes("enviada")).length;
+      console.log(`✅ Verificación completada. Notificaciones enviadas: ${notificationsSent}`);
       
       return new Response(
         JSON.stringify({ 
           success: true, 
           notifications: results,
           totalChecked: tasks?.length || 0,
-          notificationsSent: results.filter(r => r.status.includes("enviada")).length,
+          notificationsSent,
           timestamp: new Date().toISOString()
         }),
         {
@@ -316,7 +324,7 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Error:", error);
+    console.error("❌ Error:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {

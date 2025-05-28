@@ -180,7 +180,7 @@ export const sendManualNotification = async (taskId: string): Promise<boolean> =
     
     const { data, error } = await supabase.functions.invoke('send-notification-email', {
       body: {
-        to: task.notification_email, // Enviar todos los correos como string separado por comas
+        to: task.notification_email,
         taskTitle: task.title,
         dueDate: taskDueDate,
         taskDescription: task.description,
@@ -233,8 +233,8 @@ export const checkAutomaticNotifications = async (): Promise<void> => {
   try {
     console.log('🔄 Verificando notificaciones automáticas...');
     
+    // Corregido: usar método GET sin body
     const { data, error } = await supabase.functions.invoke('send-notification-email', {
-      body: {},
       method: 'GET'
     });
 
@@ -242,8 +242,9 @@ export const checkAutomaticNotifications = async (): Promise<void> => {
       console.error('Error checking notifications:', error);
     } else {
       console.log('✅ Resultado de verificación de notificaciones:', data);
-      if (data.notificationsSent > 0) {
+      if (data?.notificationsSent > 0) {
         console.log(`📨 Se enviaron ${data.notificationsSent} notificaciones automáticas`);
+        toast.success(`Se enviaron ${data.notificationsSent} notificaciones automáticas`);
       }
     }
   } catch (error) {
